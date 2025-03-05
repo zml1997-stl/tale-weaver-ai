@@ -283,6 +283,35 @@ def delete_story(story_id):
     else:
         return jsonify({'success': False, 'error': 'Story not found.'})
 
+@app.route('/generate-audio', methods=['POST'])
+def generate_audio():
+    """Generate audio from text with specified speed."""
+    data = request.json
+    
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided.'})
+    
+    text = data.get('text')
+    speed = data.get('speed', 1.15)
+    
+    if not text:
+        return jsonify({'success': False, 'error': 'No text provided.'})
+    
+    # Import the TTS processor here to avoid circular imports
+    from utils.tts_processor import TTSProcessor
+    tts_processor = TTSProcessor()
+    
+    # Generate audio
+    audio_data = tts_processor.generate_audio(text, speed)
+    
+    if audio_data:
+        return jsonify({
+            'success': True,
+            'audio_data': audio_data
+        })
+    else:
+        return jsonify({'success': False, 'error': 'Failed to generate audio.'})
+
 @app.route('/story_starters.html')
 def story_starters_template():
     """Render the story starters template."""
