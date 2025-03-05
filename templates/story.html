@@ -7,23 +7,17 @@
 {% endblock %}
 
 {% block content %}
-<div class="story-controls">
-    <button id="toggle-tts" class="btn btn-icon" title="Toggle Text-to-Speech">
-        <span class="icon">🔊</span>
-    </button>
-    <div class="voice-selector">
-        <select id="voice-type" title="Select Voice Type">
-            <option value="enhanced">Enhanced Voice</option>
-            <option value="standard">Standard Voice</option>
-        </select>
-    </div>
-    <div id="tts-loading" class="tts-loading hidden">
-        <div class="tts-spinner"></div>
-    </div>
-    <button id="save-story" class="btn btn-secondary" title="Save Story">
-        Save Story
-    </button>
-</div>
+<section class="story-container">
+    <div class="story-header">
+        <h2 id="story-title">{{ title if title else 'Your Interactive Story' }}</h2>
+        <div class="story-controls">
+            <button id="toggle-tts" class="btn btn-icon" title="Toggle Text-to-Speech">
+                <span class="icon">🔊</span>
+            </button>
+            <button id="save-story" class="btn btn-secondary" title="Save Story">
+                Save Story
+            </button>
+        </div>
     </div>
 
     <div class="story-content">
