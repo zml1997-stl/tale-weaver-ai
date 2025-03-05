@@ -293,7 +293,6 @@ def generate_audio():
     
     text = data.get('text')
     speed = data.get('speed', 1.15)
-    voice_type = data.get('voice_type', 'enhanced')  # 'enhanced' or 'standard'
     
     if not text:
         return jsonify({'success': False, 'error': 'No text provided.'})
@@ -303,7 +302,7 @@ def generate_audio():
     tts_processor = TTSProcessor()
     
     # Generate audio
-    audio_data = tts_processor.generate_audio(text, speed, voice_type)
+    audio_data = tts_processor.generate_audio(text, speed)
     
     if audio_data:
         return jsonify({
