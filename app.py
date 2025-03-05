@@ -127,7 +127,7 @@ def generate_with_gemini(prompt, temperature=0.7, max_retries=3, retry_delay=2):
             if not GEMINI_API_KEY:
                 raise ValueError("Gemini API key is not configured")
             
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-2.0-flash')
             response = model.generate_content(
                 prompt, 
                 generation_config={
