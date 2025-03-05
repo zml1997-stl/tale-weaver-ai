@@ -118,47 +118,32 @@ def clean_story_text(text):
     return cleaned_text.strip()
 
 def generate_with_gemini(prompt, temperature=0.7, max_retries=3, retry_delay=2):
-    """Generate content using Gemini API with comprehensive error handling and retries"""
     attempt = 0
     while attempt < max_retries:
         try:
-            # Detailed logging
             logger.info(f"Attempting to generate content. Attempt {attempt + 1}")
             logger.debug(f"Prompt length: {len(prompt)} characters")
             
-            # Ensure API key is present
             if not GEMINI_API_KEY:
                 raise ValueError("Gemini API key is not configured")
             
             model = genai.GenerativeModel('gemini-pro')
-            
-            # Use generation_config for temperature and add safety settings
             response = model.generate_content(
                 prompt, 
                 generation_config={
                     'temperature': temperature
                 },
                 safety_settings=[
-                    {
-                        "category": "HARM_CATEGORY_HARASSMENT",
-                        "threshold": "BLOCK_NONE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_HATE_SPEECH",
-                        "threshold": "BLOCK_NONE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        "threshold": "BLOCK_NONE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        "threshold": "BLOCK_NONE"
-                    }
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
                 ]
             )
             
-            # Validate response
+            # Log the full response for debugging
+            logger.debug(f"API Response: {response}")
+            
             if not response or not response.text:
                 logger.warning("Generated content is empty")
                 raise ValueError("Empty response from Gemini API")
@@ -169,12 +154,6 @@ def generate_with_gemini(prompt, temperature=0.7, max_retries=3, retry_delay=2):
         except Exception as e:
             attempt += 1
             logger.error(f"API call attempt {attempt} failed: {str(e)}")
-            
-            # More specific error logging
-            if hasattr(e, 'response'):
-                logger.error(f"Full error response: {e.response}")
-            
-            # Log specific error type and details
             logger.error(f"Error type: {type(e).__name__}")
             logger.error(f"Error details: {traceback.format_exc()}")
             
@@ -220,17 +199,15 @@ def index():
     """Serve the static index.html file"""
     return send_from_directory(app.static_folder, 'index.html')
 
-@app.route('/api/generate-starters', methods=['POST'])
 def api_generate_starters():
     data = request.json
     try:
-        # Log incoming request details
         logger.info(f"Received generate-starters request with data: {data}")
         genre = data.get('genre', '')
         character_name = data.get('character_name', '')
         character_trait = data.get('character_trait', '')
         
-        prompt = """
+        prompt = f"""
         Generate 3 unique and engaging story starters for an interactive fiction game. 
         Each starter should be 3-4 sentences long and end with an intriguing situation 
         that sets up a choice, but DO NOT include the choices in the starter.
@@ -252,6 +229,8 @@ def api_generate_starters():
         
         DO NOT include any choices or options in the starters themselves.
         """
+        
+        logger.debug(f"Generated Prompt: {prompt}")
         
         response = generate_with_gemini(prompt)
         starters = safe_json_parse(response)
