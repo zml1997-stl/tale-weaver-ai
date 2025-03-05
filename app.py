@@ -109,12 +109,24 @@ def generate_with_gemini(prompt, temperature=0.7, max_retries=3, retry_delay=2):
     attempt = 0
     while attempt < max_retries:
         try:
+            # Add more detailed logging
+            logger.info(f"Attempting to generate content. Attempt {attempt + 1}")
+            logger.debug(f"Prompt: {prompt}")
+            
             model = genai.GenerativeModel('gemini-2.0-flash')
             response = model.generate_content(prompt)
+            
+            # Log successful generation
+            logger.info("Content generation successful")
             return response.text
         except Exception as e:
             attempt += 1
-            logger.warning(f"API call attempt {attempt} failed: {str(e)}")
+            logger.error(f"API call attempt {attempt} failed: {str(e)}")
+            
+            # More specific error logging
+            if hasattr(e, 'response'):
+                logger.error(f"Full error response: {e.response}")
+            
             if attempt < max_retries:
                 time.sleep(retry_delay)
             else:
