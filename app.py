@@ -31,9 +31,14 @@ os.makedirs("audio_files", exist_ok=True)
 # Configure the Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
-    logger.error("GEMINI_API_KEY not found in environment variables. Please add it to your .env file.")
+    logger.error("GEMINI_API_KEY not found in environment variables.")
 else:
-    genai.configure(api_key=GEMINI_API_KEY)
+    try:
+        # More explicit API configuration with error handling
+        genai.configure(api_key=GEMINI_API_KEY)
+        logger.info("Gemini API configured successfully")
+    except Exception as e:
+        logger.error(f"Failed to configure Gemini API: {e}")
 
 # Helper functions for text-to-speech
 def change_speed(sound, speed=1.15):
