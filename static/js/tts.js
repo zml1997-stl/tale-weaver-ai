@@ -5,6 +5,8 @@ class TextToSpeech {
     constructor() {
         this.synth = window.speechSynthesis;
         this.utterance = null;
+        this.audio = null;
+        this.useServerTTS = true; // Set to true to use server-side TTS
     }
     
     /**
@@ -19,6 +21,62 @@ class TextToSpeech {
         // Stop any current speech
         this.stop();
         
+        if (this.useServerTTS) {
+            this._speakWithServer(text, options);
+        } else {
+            this._speakWithBrowser(text, options);
+        }
+    }
+    
+    /**
+     * Speak using server-side TTS
+     * @private
+     */
+    _speakWithServer(text, options) {
+        // Create a new audio element
+        this.audio = new Audio();
+        
+        // Set onended callback
+        if (options.onEnd && typeof options.onEnd === 'function') {
+            this.audio.onended = options.onEnd;
+        }
+        
+        // Call the server to generate audio
+        fetch('/generate-audio', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                speed: options.rate || 1.15
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Set the audio source to the base64 encoded audio
+                this.audio.src = 'data:audio/mp3;base64,' + data.audio_data;
+                // Play the audio
+                this.audio.play();
+            } else {
+                console.error('Error generating audio:', data.error);
+                // Fall back to browser TTS
+                this._speakWithBrowser(text, options);
+            }
+        })
+        .catch(error => {
+            console.error('Error calling TTS API:', error);
+            // Fall back to browser TTS
+            this._speakWithBrowser(text, options);
+        });
+    }
+    
+    /**
+     * Speak using browser's Web Speech API
+     * @private
+     */
+    _speakWithBrowser(text, options) {
         // Create a new utterance
         this.utterance = new SpeechSynthesisUtterance(text);
         
@@ -47,22 +105,38 @@ class TextToSpeech {
      * Stop the current speech
      */
     stop() {
+        // Stop browser TTS
         this.synth.cancel();
         this.utterance = null;
+        
+        // Stop audio element if it exists
+        if (this.audio) {
+            this.audio.pause();
+            this.audio.currentTime = 0;
+            this.audio = null;
+        }
     }
     
     /**
      * Pause the current speech
      */
     pause() {
-        this.synth.pause();
+        if (this.audio) {
+            this.audio.pause();
+        } else {
+            this.synth.pause();
+        }
     }
     
     /**
      * Resume the current speech
      */
     resume() {
-        this.synth.resume();
+        if (this.audio) {
+            this.audio.play();
+        } else {
+            this.synth.resume();
+        }
     }
     
     /**
@@ -70,7 +144,11 @@ class TextToSpeech {
      * @returns {boolean} True if speaking, false otherwise
      */
     isSpeaking() {
-        return this.synth.speaking;
+        if (this.audio) {
+            return !this.audio.paused;
+        } else {
+            return this.synth.speaking;
+        }
     }
     
     /**
