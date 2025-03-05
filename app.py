@@ -13,9 +13,13 @@ from gtts import gTTS
 from pydub import AudioSegment
 import tempfile
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.DEBUG,  # Change to DEBUG for more detailed logs
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Ensures logs are printed to console in Heroku
+    ]
+)
 
 # Load environment variables
 load_dotenv()
