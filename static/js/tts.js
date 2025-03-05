@@ -7,22 +7,6 @@ class TextToSpeech {
         this.utterance = null;
         this.audio = null;
         this.useServerTTS = true; // Set to true to use server-side TTS
-        this.voiceType = 'enhanced'; // 'enhanced' or 'standard'
-        
-        // Try to load voice preference from localStorage
-        const savedVoiceType = localStorage.getItem('preferredVoiceType');
-        if (savedVoiceType) {
-            this.voiceType = savedVoiceType;
-        }
-    }
-    
-    /**
-     * Set the voice type
-     * @param {string} voiceType - 'enhanced' or 'standard'
-     */
-    setVoiceType(voiceType) {
-        this.voiceType = voiceType;
-        localStorage.setItem('preferredVoiceType', voiceType);
     }
     
     /**
@@ -57,12 +41,6 @@ class TextToSpeech {
             this.audio.onended = options.onEnd;
         }
         
-        // Show loading indicator for TTS
-        const ttsLoadingIndicator = document.getElementById('tts-loading');
-        if (ttsLoadingIndicator) {
-            ttsLoadingIndicator.classList.remove('hidden');
-        }
-        
         // Call the server to generate audio
         fetch('/generate-audio', {
             method: 'POST',
@@ -71,17 +49,11 @@ class TextToSpeech {
             },
             body: JSON.stringify({
                 text: text,
-                speed: options.rate || 1.15,
-                voice_type: this.voiceType
+                speed: options.rate || 1.15
             })
         })
         .then(response => response.json())
         .then(data => {
-            // Hide loading indicator
-            if (ttsLoadingIndicator) {
-                ttsLoadingIndicator.classList.add('hidden');
-            }
-            
             if (data.success) {
                 // Set the audio source to the base64 encoded audio
                 this.audio.src = 'data:audio/mp3;base64,' + data.audio_data;
@@ -94,11 +66,6 @@ class TextToSpeech {
             }
         })
         .catch(error => {
-            // Hide loading indicator
-            if (ttsLoadingIndicator) {
-                ttsLoadingIndicator.classList.add('hidden');
-            }
-            
             console.error('Error calling TTS API:', error);
             // Fall back to browser TTS
             this._speakWithBrowser(text, options);
@@ -116,24 +83,12 @@ class TextToSpeech {
         // Set options
         this.utterance.rate = options.rate || 1;
         
-        // Get all available voices
-        const voices = this.synth.getVoices();
-        
-        // Try to find a natural-sounding voice
-        // Priority list of good voices available in most browsers
-        const preferredVoices = [
-            'Google UK English Female',
-            'Microsoft Libby Online (Natural)',
-            'Samantha',
-            'Google US English',
-            'Daniel'
-        ];
-        
-        for (const preferredVoice of preferredVoices) {
-            const voice = voices.find(v => v.name === preferredVoice);
+        // Set voice if specified
+        if (options.voice) {
+            const voices = this.synth.getVoices();
+            const voice = voices.find(v => v.name === options.voice);
             if (voice) {
                 this.utterance.voice = voice;
-                break;
             }
         }
         
