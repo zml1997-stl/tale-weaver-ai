@@ -13,7 +13,7 @@ class Config:
     
     # Gemini API settings
     GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-    GEMINI_MODEL = "gemini-1.5-flash"  # Using Gemini-2.0-Flash as specified
+    GEMINI_MODEL = "gemini-2.0-flash"  # Using Gemini-2.0-Flash as specified
     
     # Session settings
     SESSION_TYPE = 'filesystem'
