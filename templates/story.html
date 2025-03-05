@@ -108,6 +108,18 @@
     const saveStoryForm = document.getElementById('save-story-form');
     const closeModalButton = document.querySelector('.close-modal');
     const cancelSaveButton = document.querySelector('.cancel-save');
+
+    // Voice type selector
+    const voiceTypeSelect = document.getElementById('voice-type');
+    if (voiceTypeSelect) {
+        // Set initial value from TTS
+        voiceTypeSelect.value = tts.voiceType;
+        
+        // Handle voice type change
+        voiceTypeSelect.addEventListener('change', () => {
+            tts.setVoiceType(voiceTypeSelect.value);
+        });
+    }
     
     // TTS state
     let ttsEnabled = true;
