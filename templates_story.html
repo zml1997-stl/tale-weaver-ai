@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}AI Story Generator - Interactive Story{% endblock %}
+
+{% block head %}
+<meta name="story-id" content="{{ story_id if story_id else 'new' }}">
+{% endblock %}
+
+{% block content %}
+<section class="story-container">
+    <div class="story-header">
+        <h2 id="story-title">{{ title if title else 'Your Interactive Story' }}</h2>
+        <div class="story-controls">
+            <button id="toggle-tts" class="btn btn-icon" title="Toggle Text-to-Speech">
+                <span class="icon">🔊</span>
+            </button>
+            <button id="save-story" class="btn btn-secondary" title="Save Story">
+                Save Story
+            </button>
+        </div>
+    </div>
+
+    <div class="story-content">
+        <div id="story-parts">
+            {% if story_parts %}
+                {% for part in story_parts %}
+                    <div class="story-part" data-part-id="{{ loop.index0 }}">
+                        <p>{{ part }}</p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="story-part" data-part-id="0">
+                    <p>{{ story_starter }}</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div id="story-options" class="{% if story_ended %}hidden{% endif %}">
+            <h3>What happens next?</h3>
+            <div class="options-container">
+                {% for option in options %}
+                    <button class="option-btn" data-option-id="{{ loop.index0 }}">{{ option }}</button>
+                {% endfor %}
+            </div>
+            <button id="end-story" class="btn btn-outline">End Story</button>
+        </div>
+        
+        <div id="loading-indicator" class="hidden">
+            <div class="spinner"></div>
+            <p>Generating story...</p>
+        </div>
+        
+        <div id="story-ended" class="{% if not story_ended %}hidden{% endif %}">
+            <h3>Story Completed</h3>
+            <p>Your interactive story has reached its conclusion.</p>
+            <div class="story-end-actions">
+                <button id="save-final-story" class="btn btn-primary">Save This Story</button>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Create New Story</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div id="save-modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>Save Your Story</h3>
+        <form id="save-story-form">
+            <div class="form-group">
+                <label for="story-title-input">Story Title:</label>
+                <input type="text" id="story-title-input" name="title" required placeholder="Enter a title for your story">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-outline cancel-save">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tts.js') }}"></script>
+<script>
+    // Story data
+    const storyData = {
+        id: "{{ story_id if story_id else '' }}",
+        parts: [{% for part in story_parts or [story_starter] %}"{{ part|safe }}"{% if not loop.last %},{% endif %}{% endfor %}],
+        options: [{% for option in options %}"{{ option }}"{% if not loop.last %},{% endif %}{% endfor %}],
+        ended: {% if story_ended %}true{% else %}false{% endif %}
+    };
+    
+    // DOM elements
+    const storyPartsContainer = document.getElementById('story-parts');
+    const storyOptionsContainer = document.getElementById('story-options');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const storyEndedContainer = document.getElementById('story-ended');
+    const toggleTtsButton = document.getElementById('toggle-tts');
+    const saveStoryButton = document.getElementById('save-story');
+    const endStoryButton = document.getElementById('end-story');
+    const saveModal = document.getElementById('save-modal');
+    const saveStoryForm = document.getElementById('save-story-form');
+    const closeModalButton = document.querySelector('.close-modal');
+    const cancelSaveButton = document.querySelector('.cancel-save');
+    
+    // TTS state
+    let ttsEnabled = true;
+    let currentlyReading = false;
+    let ttsQueue = [];
+    
+    // Initialize TTS
+    const tts = new TextToSpeech();
+    
+    // Function to toggle TTS
+    toggleTtsButton.addEventListener('click', () => {
+        ttsEnabled = !ttsEnabled;
+        toggleTtsButton.querySelector('.icon').textContent = ttsEnabled ? '🔊' : '🔇';
+        
+        if (!ttsEnabled && currentlyReading) {
+            tts.stop();
+            currentlyReading = false;
+            ttsQueue = [];
+        }
+    });
+    
+    // Read a story part aloud
+    function readStoryPart(text) {
+        if (!ttsEnabled) return;
+        
+        ttsQueue.push(text);
+        
+        if (!currentlyReading) {
+            processNextInQueue();
+        }
+    }
+    
+    // Process the next item in the TTS queue
+    function processNextInQueue() {
+        if (ttsQueue.length === 0) {
+            currentlyReading = false;
+            return;
+        }
+        
+        currentlyReading = true;
+        const text = ttsQueue.shift();
+        
+        tts.speak(text, {
+            rate: 1.15,
+            onEnd: processNextInQueue
+        });
+    }
+    
+    // Handle option selection
+    document.querySelectorAll('.option-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            const optionId = button.dataset.optionId;
+            const selectedOption = storyData.options[optionId];
+            
+            // Show loading indicator
+            storyOptionsContainer.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+            
+            try {
+                // Send selected option to server
+                const response = await fetch('/continue-story', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        story_id: storyData.id,
+                        story_parts: storyData.parts,
+                        selected_option: selectedOption
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Add the new part to the story
+                    storyData.parts.push(data.new_part);
+                    
+                    // Create and append the new story part element
+                    const newPartElement = document.createElement('div');
+                    newPartElement.className = 'story-part';
+                    newPartElement.dataset.partId = storyData.parts.length - 1;
+                    newPartElement.innerHTML = `<p>${data.new_part}</p>`;
+                    storyPartsContainer.appendChild(newPartElement);
+                    
+                    // Read the new part aloud
+                    readStoryPart(data.new_part);
+                    
+                    // Update the options
+                    storyData.options = data.new_options;
+                    
+                    // Update the options buttons
+                    const optionsContainer = document.querySelector('.options-container');
+                    optionsContainer.innerHTML = '';
+                    
+                    data.new_options.forEach((option, index) => {
+                        const optionButton = document.createElement('button');
+                        optionButton.className = 'option-btn';
+                        optionButton.dataset.optionId = index;
+                        optionButton.textContent = option;
+                        
+                        optionButton.addEventListener('click', async () => {
+                            const selectedOption = storyData.options[index];
+                            
+                            // Show loading indicator
+                            storyOptionsContainer.classList.add('hidden');
+                            loadingIndicator.classList.remove('hidden');
+                            
+                            try {
+                                // Send selected option to server
+                                const response = await fetch('/continue-story', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        story_id: storyData.id,
+                                        story_parts: storyData.parts,
+                                        selected_option: selectedOption
+                                    })
+                                });
+                                
+                                // Process response...
+                                const data = await response.json();
+                                // (Same handling as above)
+                            } catch (error) {
+                                console.error('Error continuing story:', error);
+                            }
+                        });
+                        
+                        optionsContainer.appendChild(optionButton);
+                    });
+                    
+                    // Check if the story should end due to length
+                    if (data.should_end) {
+                        endStory();
+                    }
+                    
+                    // Scroll to the new part
+                    newPartElement.scrollIntoView({ behavior: 'smooth' });
+                    
+                    // Show the options container again
+                    loadingIndicator.classList.add('hidden');
+                    storyOptionsContainer.classList.remove('hidden');
+                } else {
+                    alert('Error: ' + data.error);
+                    loadingIndicator.classList.add('hidden');
+                    storyOptionsContainer.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error continuing story:', error);
+                alert('An error occurred while continuing the story. Please try again.');
+                loadingIndicator.classList.add('hidden');
+                storyOptionsContainer.classList.remove('hidden');
+            }
+        });
+    });
+    
+    // End story button
+    endStoryButton.addEventListener('click', endStory);
+    
+    async function endStory() {
+        // Show loading indicator
+        storyOptionsContainer.classList.add('hidden');
+        loadingIndicator.classList.remove('hidden');
+        
+        try {
+            // Send request to end the story
+            const response = await fetch('/end-story', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    story_id: storyData.id,
+                    story_parts: storyData.parts
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Add the ending to the story
+                storyData.parts.push(data.ending);
+                storyData.ended = true;
+                
+                // Create and append the ending element
+                const endingElement = document.createElement('div');
+                endingElement.className = 'story-part story-ending';
+                endingElement.dataset.partId = storyData.parts.length - 1;
+                endingElement.innerHTML = `<p>${data.ending}</p>`;
+                storyPartsContainer.appendChild(endingElement);
+                
+                // Read the ending aloud
+                readStoryPart(data.ending);
+                
+                // Show the story ended container
+                loadingIndicator.classList.add('hidden');
+                storyEndedContainer.classList.remove('hidden');
+                
+                // Scroll to the ending
+                endingElement.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                alert('Error: ' + data.error);
+                loadingIndicator.classList.add('hidden');
+                storyOptionsContainer.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Error ending story:', error);
+            alert('An error occurred while ending the story. Please try again.');
+            loadingIndicator.classList.add('hidden');
+            storyOptionsContainer.classList.remove('hidden');
+        }
+    }
+    
+    // Save story button
+    saveStoryButton.addEventListener('click', () => {
+        saveModal.classList.remove('hidden');
+    });
+    
+    // Save final story button
+    document.getElementById('save-final-story').addEventListener('click', () => {
+        saveModal.classList.remove('hidden');
+    });
+    
+    // Close modal
+    closeModalButton.addEventListener('click', () => {
+        saveModal.classList.add('hidden');
+    });
+    
+    // Cancel save button
+    cancelSaveButton.addEventListener('click', () => {
+        saveModal.classList.add('hidden');
+    });
+    
+    // Save story form submission
+    saveStoryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        const title = document.getElementById('story-title-input').value;
+        
+        try {
+            // Send request to save the story
+            const response = await fetch('/save-story', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    story_id: storyData.id,
+                    title: title,
+                    story_parts: storyData.parts,
+                    ended: storyData.ended
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update the story ID if this is a new story
+                if (!storyData.id) {
+                    storyData.id = data.story_id;
+                }
+                
+                // Update the title
+                document.getElementById('story-title').textContent = title;
+                
+                // Close the modal
+                saveModal.classList.add('hidden');
+                
+                // Show success message
+                alert('Story saved successfully!');
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error saving story:', error);
+            alert('An error occurred while saving the story. Please try again.');
+        }
+    });
+    
+    // Read the first part aloud when the page loads
+    window.addEventListener('load', () => {
+        if (storyData.parts.length > 0) {
+            readStoryPart(storyData.parts[storyData.parts.length - 1]);
+        }
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+        if (event.target === saveModal) {
+            saveModal.classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}

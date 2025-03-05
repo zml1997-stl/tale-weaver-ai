@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}AI Story Generator - Saved Stories{% endblock %}
+
+{% block content %}
+<section class="saved-stories">
+    <h2>Your Saved Stories</h2>
+    
+    {% if stories %}
+        <div class="story-filters">
+            <input type="text" id="story-search" placeholder="Search stories..." class="search-input">
+            <select id="story-sort" class="sort-select">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="title">By Title</option>
+            </select>
+        </div>
+        
+        <div class="story-grid">
+            {% for story in stories %}
+                <div class="story-card" data-story-id="{{ story.id }}" data-story-title="{{ story.title }}">
+                    <div class="story-card-content">
+                        <h3>{{ story.title }}</h3>
+                        <p class="story-date">{{ story.timestamp|format_date }}</p>
+                        <p class="story-preview">{{ story.content|truncate(100) }}</p>
+                    </div>
+                    <div class="story-card-actions">
+                        <a href="{{ url_for('view_story', story_id=story.id) }}" class="btn btn-primary">Read</a>
+                        <button class="btn btn-outline delete-story" data-story-id="{{ story.id }}">Delete</button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>You haven't saved any stories yet.</p>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">Create Your First Story</a>
+        </div>
+    {% endif %}
+</section>
+
+<div id="delete-modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h3>Delete Story</h3>
+        <p>Are you sure you want to delete this story? This action cannot be undone.</p>
+        <div class="form-actions">
+            <button id="confirm-delete" class="btn btn-danger">Delete</button>
+            <button class="btn btn-outline cancel-delete">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // DOM elements
+    const storySearch = document.getElementById('story-search');
+    const storySort = document.getElementById('story-sort');
+    const storyGrid = document.querySelector('.story-grid');
+    const deleteModal = document.getElementById('delete-modal');
+    const confirmDeleteButton = document.getElementById('confirm-delete');
+    const cancelDeleteButton = document.querySelector('.cancel-delete');
+    const closeModalButton = document.querySelector('.close-modal');
+    
+    // Story cards
+    const storyCards = Array.from(document.querySelectorAll('.story-card'));
+    
+    // Current story to delete
+    let currentStoryToDelete = null;
+    
+    // Search functionality
+    storySearch.addEventListener('input', () => {
+        const searchTerm = storySearch.value.toLowerCase();
+        
+        storyCards.forEach(card => {
+            const title = card.dataset.storyTitle.toLowerCase();
+            
+            if (title.includes(searchTerm)) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+    
+    // Sort functionality
+    storySort.addEventListener('change', () => {
+        const sortValue = storySort.value;
+        
+        const sortedCards = [...storyCards].sort((a, b) => {
+            if (sortValue === 'newest') {
+                return b.dataset.storyId - a.dataset.storyId;
+            } else if (sortValue === 'oldest') {
+                return a.dataset.storyId - b.dataset.storyId;
+            } else if (sortValue === 'title') {
+                return a.dataset.storyTitle.localeCompare(b.dataset.storyTitle);
+            }
+        });
+        
+        // Clear the grid
+        storyGrid.innerHTML = '';
+        
+        // Append the sorted cards
+        sortedCards.forEach(card => {
+            storyGrid.appendChild(card);
+        });
+    });
+    
+    // Delete story functionality
+    document.querySelectorAll('.delete-story').forEach(button => {
+        button.addEventListener('click', () => {
+            currentStoryToDelete = button.dataset.storyId;
+            deleteModal.classList.remove('hidden');
+        });
+    });
+    
+    // Confirm delete
+    confirmDeleteButton.addEventListener('click', async () => {
+        if (!currentStoryToDelete) return;
+        
+        try {
+            // Send request to delete the story
+            const response = await fetch(`/delete-story/${currentStoryToDelete}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Remove the story card from the grid
+                const storyCard = document.querySelector(`.story-card[data-story-id="${currentStoryToDelete}"]`);
+                storyCard.remove();
+                
+                // Close the modal
+                deleteModal.classList.add('hidden');
+                
+                // Reset the current story to delete
+                currentStoryToDelete = null;
+                
+                // Check if there are no more stories
+                if (document.querySelectorAll('.story-card').length === 0) {
+                    // Show empty state
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'empty-state';
+                    emptyState.innerHTML = `
+                        <p>You haven't saved any stories yet.</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">Create Your First Story</a>
+                    `;
+                    
+                    document.querySelector('.saved-stories').appendChild(emptyState);
+                    document.querySelector('.story-filters').remove();
+                    storyGrid.remove();
+                }
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error deleting story:', error);
+            alert('An error occurred while deleting the story. Please try again.');
+        }
+    });
+    
+    // Cancel delete
+    cancelDeleteButton.addEventListener('click', () => {
+        deleteModal.classList.add('hidden');
+        currentStoryToDelete = null;
+    });
+    
+    // Close modal
+    closeModalButton.addEventListener('click', () => {
+        deleteModal.classList.add('hidden');
+        currentStoryToDelete = null;
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+        if (event.target === deleteModal) {
+            deleteModal.classList.add('hidden');
+            currentStoryToDelete = null;
+        }
+    });
+</script>
+{% endblock %}
