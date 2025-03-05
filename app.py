@@ -110,20 +110,54 @@ def clean_story_text(text):
     return cleaned_text.strip()
 
 def generate_with_gemini(prompt, temperature=0.7, max_retries=3, retry_delay=2):
-    """Generate content using Gemini API with error handling and retries"""
+    """Generate content using Gemini API with comprehensive error handling and retries"""
     attempt = 0
     while attempt < max_retries:
         try:
-            # Add more detailed logging
+            # Detailed logging
             logger.info(f"Attempting to generate content. Attempt {attempt + 1}")
-            logger.debug(f"Prompt: {prompt}")
+            logger.debug(f"Prompt length: {len(prompt)} characters")
             
-            model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content(prompt)
+            # Ensure API key is present
+            if not GEMINI_API_KEY:
+                raise ValueError("Gemini API key is not configured")
             
-            # Log successful generation
+            model = genai.GenerativeModel('gemini-pro')
+            
+            # Use generation_config for temperature and add safety settings
+            response = model.generate_content(
+                prompt, 
+                generation_config={
+                    'temperature': temperature
+                },
+                safety_settings=[
+                    {
+                        "category": "HARM_CATEGORY_HARASSMENT",
+                        "threshold": "BLOCK_NONE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_HATE_SPEECH",
+                        "threshold": "BLOCK_NONE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        "threshold": "BLOCK_NONE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        "threshold": "BLOCK_NONE"
+                    }
+                ]
+            )
+            
+            # Validate response
+            if not response or not response.text:
+                logger.warning("Generated content is empty")
+                raise ValueError("Empty response from Gemini API")
+            
             logger.info("Content generation successful")
             return response.text
+        
         except Exception as e:
             attempt += 1
             logger.error(f"API call attempt {attempt} failed: {str(e)}")
@@ -132,10 +166,14 @@ def generate_with_gemini(prompt, temperature=0.7, max_retries=3, retry_delay=2):
             if hasattr(e, 'response'):
                 logger.error(f"Full error response: {e.response}")
             
+            # Log specific error type and details
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error details: {traceback.format_exc()}")
+            
             if attempt < max_retries:
                 time.sleep(retry_delay)
             else:
-                logger.error(f"Failed to generate content after {max_retries} attempts: {str(e)}")
+                logger.error(f"Failed to generate content after {max_retries} attempts")
                 return "Once upon a time, there was an error in the storytelling machine..."
 
 def safe_json_parse(text):
@@ -176,8 +214,10 @@ def index():
 
 @app.route('/api/generate-starters', methods=['POST'])
 def api_generate_starters():
-    """Generate story starters based on genre and character information"""
     data = request.json
+    try:
+        # Log incoming request details
+        logger.info(f"Received generate-starters request with data: {data}")
     genre = data.get('genre', '')
     character_name = data.get('character_name', '')
     character_trait = data.get('character_trait', '')
@@ -219,15 +259,19 @@ def api_generate_starters():
         
         return jsonify({"starters": starters})
     except Exception as e:
-        logger.error(f"Error generating starters: {str(e)}")
+        logger.error(f"Detailed error in generate-starters: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(traceback.format_exc())
+        
         return jsonify({
             "error": "Failed to generate story starters",
+            "details": str(e),
             "starters": [
-                "You find yourself standing at the edge of a mysterious forest with a map that seems to lead to a hidden treasure.",
-                "The spaceship's alarm blares as you wake up from cryosleep, the rest of the crew is missing.",
-                "The old mansion you just inherited contains a locked room that nobody has entered for over a century."
+                "You find yourself at the beginning of an unexpected journey.",
+                "A mysterious path opens before you, waiting to be explored.",
+                "The first step of your adventure begins now."
             ]
-        }), 200  # Return 200 with fallback data
+        }), 200
 
 @app.route('/api/generate-choices', methods=['POST'])
 def api_generate_choices():
