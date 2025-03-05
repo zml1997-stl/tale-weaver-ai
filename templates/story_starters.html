@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}AI Story Generator - {{ genre }} Story Starters{% endblock %}
+
+{% block content %}
+<section class="story-starters">
+    <h2>{{ genre }} Story Starters</h2>
+    <p class="instructions">Choose one of these story starters to begin your adventure:</p>
+    
+    <div class="starters-container">
+        {% for starter in starters %}
+            <div class="starter-card">
+                <div class="starter-content">
+                    <p>{{ starter }}</p>
+                </div>
+                <div class="starter-actions">
+                    <a href="{{ url_for('start_story', starter_id=loop.index0) }}" class="btn btn-primary">Choose This Starter</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <div class="back-link">
+        <a href="{{ url_for('index') }}" class="btn btn-outline">Back to Home</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .story-starters {
+        background-color: var(--surface-color);
+        padding: var(--spacing-xl);
+        border-radius: var(--border-radius-md);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .story-starters h2 {
+        color: var(--primary-color);
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .instructions {
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .starters-container {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-lg);
+        margin-bottom: var(--spacing-xl);
+    }
+    
+    .starter-card {
+        background-color: #f9f9f9;
+        border-radius: var(--border-radius-sm);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    
+    .starter-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .starter-content {
+        padding: var(--spacing-md);
+        border-left: 4px solid var(--primary-color);
+    }
+    
+    .starter-actions {
+        padding: var(--spacing-md);
+        display: flex;
+        justify-content: flex-end;
+        border-top: var(--border-width) solid #e0e0e0;
+    }
+    
+    .back-link {
+        text-align: center;
+        margin-top: var(--spacing-lg);
+    }
+</style>
+{% endblock %}
