@@ -3,35 +3,16 @@ import uuid
 import base64
 from gtts import gTTS
 from pydub import AudioSegment
-import torch
-from TTS.api import TTS
+import subprocess
+import tempfile
 
 class TTSProcessor:
-    """Process text-to-speech with custom speed using Coqui TTS."""
+    """Process text-to-speech with custom speed using multiple engines."""
     
     def __init__(self):
         """Initialize the TTS processor."""
         # Create a temp directory if it doesn't exist
         os.makedirs('temp_audio', exist_ok=True)
-        
-        # Initialize Coqui TTS
-        try:
-            self.coqui_available = torch.cuda.is_available()
-            if self.coqui_available:
-                # Use GPU if available
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-                # Initialize TTS with a good English model
-                self.tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False).to(self.device)
-            else:
-                # Initialize TTS with a smaller model for CPU
-                self.device = "cpu"
-                self.tts = TTS(model_name="tts_models/en/ljspeech/glow-tts", progress_bar=False)
-            
-            print(f"Coqui TTS initialized on {self.device}")
-            self.coqui_available = True
-        except Exception as e:
-            print(f"Error initializing Coqui TTS: {e}")
-            self.coqui_available = False
     
     def generate_audio(self, text, speed=1.15, voice_type="enhanced"):
         """Generate audio from text with specified speed.
@@ -48,29 +29,48 @@ class TTSProcessor:
         filename = f"temp_audio/{uuid.uuid4()}.mp3"
         
         try:
-            if voice_type == "enhanced" and self.coqui_available:
-                return self._generate_coqui_audio(text, speed, filename)
+            if voice_type == "enhanced":
+                # Try to use edge-tts if available (better quality)
+                try:
+                    return self._generate_edge_tts_audio(text, speed, filename)
+                except Exception as e:
+                    print(f"Edge TTS failed, falling back to gTTS: {e}")
+                    return self._generate_gtts_audio(text, speed, filename)
             else:
                 return self._generate_gtts_audio(text, speed, filename)
         except Exception as e:
             print(f"Error generating audio: {e}")
             # Fallback to standard TTS if enhanced fails
-            if voice_type == "enhanced":
+            try:
                 return self._generate_gtts_audio(text, speed, filename)
-            return None
+            except:
+                return None
     
-    def _generate_coqui_audio(self, text, speed, filename):
-        """Generate audio using Coqui TTS."""
+    def _generate_edge_tts_audio(self, text, speed, filename):
+        """Generate audio using Microsoft Edge TTS (via subprocess)."""
+        # Create a temporary file for the text
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
+            text_file = f.name
+            f.write(text)
+        
         try:
-            # Generate speech using Coqui TTS
-            # We'll use the wav file format for better quality
-            wav_filename = filename.replace('.mp3', '.wav')
+            # Use edge-tts command line tool (must be installed via pip)
+            # Install with: pip install edge-tts
+            voice = "en-US-AriaNeural"  # One of the best Microsoft voices
             
-            # Generate the audio
-            self.tts.tts_to_file(text=text, file_path=wav_filename)
+            # Execute edge-tts command
+            cmd = [
+                "edge-tts",
+                "--voice", voice,
+                "--file", text_file,
+                "--write-media", filename
+            ]
             
-            # Convert to MP3 and adjust speed using pydub
-            audio = AudioSegment.from_file(wav_filename)
+            # Run the command
+            subprocess.run(cmd, check=True, capture_output=True)
+            
+            # Load audio file with pydub for speed adjustment
+            audio = AudioSegment.from_file(filename)
             
             # Adjust speed by modifying the frame rate
             if speed != 1.0:
@@ -78,29 +78,45 @@ class TTSProcessor:
                 audio_speed_adjusted = audio._spawn(audio.raw_data, overrides={
                     "frame_rate": new_frame_rate
                 })
+                
+                # Export the modified audio to a new file
+                speed_adjusted_filename = f"temp_audio/{uuid.uuid4()}_speed.mp3"
+                audio_speed_adjusted.export(speed_adjusted_filename, format="mp3")
+                
+                # Read the file and encode to base64
+                with open(speed_adjusted_filename, "rb") as audio_file:
+                    audio_data = base64.b64encode(audio_file.read()).decode('utf-8')
+                
+                # Clean up temporary files
+                try:
+                    os.remove(filename)
+                    os.remove(speed_adjusted_filename)
+                    os.remove(text_file)
+                except:
+                    pass
             else:
-                audio_speed_adjusted = audio
-            
-            # Export to MP3
-            audio_speed_adjusted.export(filename, format="mp3")
-            
-            # Read the file and encode to base64
-            with open(filename, "rb") as audio_file:
-                audio_data = base64.b64encode(audio_file.read()).decode('utf-8')
-            
-            # Clean up temporary files
-            try:
-                os.remove(wav_filename)
-                os.remove(filename)
-            except:
-                pass
+                # Read the file and encode to base64
+                with open(filename, "rb") as audio_file:
+                    audio_data = base64.b64encode(audio_file.read()).decode('utf-8')
+                
+                # Clean up temporary files
+                try:
+                    os.remove(filename)
+                    os.remove(text_file)
+                except:
+                    pass
             
             return audio_data
             
         except Exception as e:
-            print(f"Error generating Coqui TTS audio: {e}")
-            # If Coqui fails, fall back to gTTS
-            return self._generate_gtts_audio(text, speed, filename)
+            print(f"Error generating Edge TTS audio: {e}")
+            # Clean up temporary files
+            try:
+                os.remove(text_file)
+            except:
+                pass
+            # If Edge TTS fails, fall back to gTTS
+            raise e
     
     def _generate_gtts_audio(self, text, speed, filename):
         """Generate audio using Google Text-to-Speech."""
