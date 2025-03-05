@@ -14,7 +14,7 @@ const appState = {
 };
 
 // API endpoint (will be replaced with actual backend URL)
-const API_ENDPOINT = '/api';
+const API_ENDPOINT = 'https://tale-weaver-ai-ca866b586bec.herokuapp.com/api';
 
 // DOM ready handler
 document.addEventListener('DOMContentLoaded', () => {
