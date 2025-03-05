@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from gtts import gTTS
 from pydub import AudioSegment
 import tempfile
+import traceback
 
 logging.basicConfig(
     level=logging.DEBUG,  # Change to DEBUG for more detailed logs
@@ -20,6 +21,9 @@ logging.basicConfig(
         logging.StreamHandler(),  # Ensures logs are printed to console in Heroku
     ]
 )
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -222,11 +226,10 @@ def api_generate_starters():
     try:
         # Log incoming request details
         logger.info(f"Received generate-starters request with data: {data}")
-    genre = data.get('genre', '')
-    character_name = data.get('character_name', '')
-    character_trait = data.get('character_trait', '')
-    
-    try:
+        genre = data.get('genre', '')
+        character_name = data.get('character_name', '')
+        character_trait = data.get('character_trait', '')
+        
         prompt = """
         Generate 3 unique and engaging story starters for an interactive fiction game. 
         Each starter should be 3-4 sentences long and end with an intriguing situation 
