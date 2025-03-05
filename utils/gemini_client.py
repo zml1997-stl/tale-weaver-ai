@@ -25,7 +25,7 @@ class GeminiClient:
             list: A list of three story starters.
         """
         prompt = f"""
-        Generate three unique and engaging story starters (2-3 sentences each) for a {genre} story.
+        Generate three unique and engaging story starters (6-8 sentences each) for a {genre} story.
         Each starter should set up an interesting scenario that could lead to an interactive story.
         Format the output as a Python list of three strings, with no additional text or explanation.
         """
@@ -73,7 +73,7 @@ class GeminiClient:
             str: A story starter based on the user's idea.
         """
         prompt = f"""
-        Generate an engaging opening paragraph (2-3 sentences) for a story based on this idea: "{idea}".
+        Generate an engaging opening paragraph (6-7 sentences) for a story based on this idea: "{idea}".
         The paragraph should set up the scenario in an interesting way that can lead to an interactive story.
         Provide only the paragraph with no additional text or explanation.
         """
@@ -102,7 +102,7 @@ class GeminiClient:
         {story_so_far}
         
         Generate three distinct and interesting options for what could happen next in this story.
-        Each option should be a brief phrase (5-10 words) that presents a clear direction.
+        Each option should be a brief phrase (2-4 sentences) that presents a clear direction.
         Format the output as a Python list of three strings, with no additional text or explanation.
         """
         
@@ -156,7 +156,7 @@ class GeminiClient:
         
         The reader has chosen to: "{selected_option}"
         
-        Continue the story with a new paragraph (3-5 sentences) based on this choice.
+        Continue the story with a new paragraph (300-400 words) based on this choice.
         Make it engaging and leave room for further choices.
         Provide only the new paragraph with no additional text or explanation.
         """
@@ -184,7 +184,7 @@ class GeminiClient:
         
         {story_so_far}
         
-        Generate a satisfying conclusion (2-4 sentences) that wraps up the story.
+        Generate a satisfying conclusion (100-200 words) that wraps up the story.
         Provide only the ending paragraph with no additional text or explanation.
         """
         
