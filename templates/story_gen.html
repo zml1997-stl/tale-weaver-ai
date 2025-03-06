@@ -1,0 +1,67 @@
+<!-- templates/story_gen.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Story - Interactive Story Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Generate Your Story</h1>
+        
+        <form action="{{ url_for('generate_story') }}" method="POST">
+            <div>
+                <label for="genre">Choose a Genre:</label>
+                <select name="story_input" id="genre">
+                    <option value="fantasy">Fantasy</option>
+                    <option value="sci-fi">Science Fiction</option>
+                    <option value="mystery">Mystery</option>
+                    <option value="romance">Romance</option>
+                </select>
+                <button type="submit" class="button">Get Story Starters</button>
+            </div>
+        </form>
+
+        <p class="or">- OR -</p>
+
+        <form action="{{ url_for('generate_story') }}" method="POST">
+            <div>
+                <label for="custom_idea">Enter Your Own Idea:</label>
+                <textarea name="story_input" id="custom_idea" rows="3" placeholder="Enter your story idea..."></textarea>
+                <button type="submit" class="button">Generate Starter</button>
+            </div>
+        </form>
+
+        {% if starters %}
+            <div class="story-options">
+                <h2>Choose a Story Starter:</h2>
+                {% for starter in starters %}
+                    <div class="story-option" onclick="selectStarter('{{ starter }}')">
+                        <p>{{ starter }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <form id="starterForm" action="{{ url_for('story_page') }}" method="POST" style="display: none;">
+                <input type="hidden" name="selected_starter" id="selectedStarter">
+                <button type="submit" class="button">Continue with this Starter</button>
+            </form>
+        {% endif %}
+
+        <a href="{{ url_for('index') }}" class="button">Back to Home</a>
+    </div>
+
+    <div class="footer">
+        <p>Powered by Google Gemini</p>
+    </div>
+
+    <script>
+        function selectStarter(starter) {
+            document.getElementById('selectedStarter').value = starter;
+            document.getElementById('starterForm').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
