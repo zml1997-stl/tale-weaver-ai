@@ -1,198 +1,71 @@
+# utils/gemini_client.py
 import google.generativeai as genai
-from config import Config
+from typing import List, Dict
 
 class GeminiClient:
-    """Client for interacting with Google's Gemini API."""
-    
-    def __init__(self):
-        """Initialize the Gemini client with API key from config."""
-        self.api_key = Config.GEMINI_API_KEY
-        self.model = Config.GEMINI_MODEL
+    def __init__(self, api_key: str):
+        """Initialize the Gemini client with the API key."""
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-1.0-flash')
+        self.genres = ['fantasy', 'sci-fi', 'mystery', 'romance']
+        self.instructions = {
+            'starter': "Generate a 2-3 sentence story starter in the {genre} genre. Make it engaging and open-ended.",
+            'custom_starter': "Generate a 2-3 sentence story starter based on this idea: {idea}",
+            'next_part': """Given this story part:
+{previous_part}
+
+And this user choice:
+{selected_option}
+
+Generate the next part of the story (3-4 sentences). Make it engaging and end with a cliffhanger.""",
+            'options': """Given this story part:
+{story_part}
+
+Generate 3 distinct options for how the story could continue. Each option should be 1 sentence long and lead to different story directions.""",
+            'ending': """Given this story so far:
+{story_parts}
+
+Generate a satisfying ending to the story (3-4 sentences)."""
+        }
+
+    def generate_story_starters(self, genre: str) -> List[str]:
+        """Generate 3 story starters for a given genre."""
+        if genre not in self.genres:
+            raise ValueError(f"Invalid genre. Choose from: {', '.join(self.genres)}")
         
-        # Configure the Gemini API
-        genai.configure(api_key=self.api_key)
-        
-        # Get the generative model
-        self.model_instance = genai.GenerativeModel(self.model)
-    
-    def generate_story_starters(self, genre):
-        """Generate three story starters for a given genre.
-        
-        Args:
-            genre (str): The genre for the story starters.
-            
-        Returns:
-            list: A list of three story starters.
-        """
-        prompt = f"""
-        Generate three unique and engaging story starters (6-8 sentences each) for a {genre} story.
-        Each starter should set up an interesting scenario that could lead to an interactive story.
-        Format the output as a Python list of three strings, with no additional text or explanation.
-        """
-        
-        response = self.model_instance.generate_content(prompt)
-        
-        # Parse the response to extract the three starters
-        try:
-            content = response.text
-            # Clean up the response to extract just the list
-            content = content.strip()
-            if content.startswith("```python"):
-                content = content.split("```python")[1].split("```")[0].strip()
-            elif content.startswith("```"):
-                content = content.split("```")[1].strip()
-                
-            # Safe evaluation of the list
-            starters = eval(content)
-            
-            # Ensure we have exactly three starters
-            if not isinstance(starters, list) or len(starters) != 3:
-                starters = [
-                    f"In a world of {genre}, an unexpected adventure begins...",
-                    f"The {genre} tale unfolds with a surprising twist...",
-                    f"A {genre} story starts with an unusual discovery..."
-                ]
-            
-            return starters
-        except Exception as e:
-            print(f"Error parsing story starters: {e}")
-            # Fallback starters
-            return [
-                f"In a world of {genre}, an unexpected adventure begins...",
-                f"The {genre} tale unfolds with a surprising twist...",
-                f"A {genre} story starts with an unusual discovery..."
-            ]
-    
-    def generate_story_from_custom_idea(self, idea):
-        """Generate a story starter from a custom user idea.
-        
-        Args:
-            idea (str): The user's custom story idea.
-            
-        Returns:
-            str: A story starter based on the user's idea.
-        """
-        prompt = f"""
-        Generate an engaging opening paragraph (6-7 sentences) for a story based on this idea: "{idea}".
-        The paragraph should set up the scenario in an interesting way that can lead to an interactive story.
-        Provide only the paragraph with no additional text or explanation.
-        """
-        
-        response = self.model_instance.generate_content(prompt)
-        
-        # Return the generated starter
-        try:
-            return response.text.strip()
-        except Exception as e:
-            print(f"Error generating story from custom idea: {e}")
-            return f"A story begins with {idea}..."
-    
-    def generate_story_options(self, story_so_far):
-        """Generate three options for continuing the story.
-        
-        Args:
-            story_so_far (str): The story content up to this point.
-            
-        Returns:
-            list: A list of three options for continuing the story.
-        """
-        prompt = f"""
-        Here's a story in progress:
-        
-        {story_so_far}
-        
-        Generate three distinct and interesting options for what could happen next in this story.
-        Each option should be a brief phrase (2-4 sentences) that presents a clear direction.
-        Format the output as a Python list of three strings, with no additional text or explanation.
-        """
-        
-        response = self.model_instance.generate_content(prompt)
-        
-        # Parse the response to extract the three options
-        try:
-            content = response.text
-            # Clean up the response to extract just the list
-            content = content.strip()
-            if content.startswith("```python"):
-                content = content.split("```python")[1].split("```")[0].strip()
-            elif content.startswith("```"):
-                content = content.split("```")[1].strip()
-                
-            # Safe evaluation of the list
-            options = eval(content)
-            
-            # Ensure we have exactly three options
-            if not isinstance(options, list) or len(options) != 3:
-                options = [
-                    "Continue the adventure",
-                    "Take an unexpected turn",
-                    "Face a new challenge"
-                ]
-            
-            return options
-        except Exception as e:
-            print(f"Error parsing story options: {e}")
-            # Fallback options
-            return [
-                "Continue the adventure",
-                "Take an unexpected turn",
-                "Face a new challenge"
-            ]
-    
-    def continue_story(self, story_so_far, selected_option):
-        """Generate the next part of the story based on the selected option.
-        
-        Args:
-            story_so_far (str): The story content up to this point.
-            selected_option (str): The option selected by the user.
-            
-        Returns:
-            str: The next part of the story.
-        """
-        prompt = f"""
-        Here's a story in progress:
-        
-        {story_so_far}
-        
-        The reader has chosen to: "{selected_option}"
-        
-        Continue the story with a new paragraph (300-400 words) based on this choice.
-        Make it engaging and leave room for further choices.
-        Provide only the new paragraph with no additional text or explanation.
-        """
-        
-        response = self.model_instance.generate_content(prompt)
-        
-        # Return the generated continuation
-        try:
-            return response.text.strip()
-        except Exception as e:
-            print(f"Error continuing story: {e}")
-            return f"The story continues as {selected_option}..."
-    
-    def generate_story_ending(self, story_so_far):
-        """Generate a satisfying ending for the story.
-        
-        Args:
-            story_so_far (str): The story content up to this point.
-            
-        Returns:
-            str: The ending of the story.
-        """
-        prompt = f"""
-        Here's a story that needs an ending:
-        
-        {story_so_far}
-        
-        Generate a satisfying conclusion (100-200 words) that wraps up the story.
-        Provide only the ending paragraph with no additional text or explanation.
-        """
-        
-        response = self.model_instance.generate_content(prompt)
-        
-        # Return the generated ending
-        try:
-            return response.text.strip()
-        except Exception as e:
-            print(f"Error generating story ending: {e}")
-            return "And thus, the story came to its conclusion."
+        prompt = self.instructions['starter'].format(genre=genre)
+        response = self.model.generate_content(prompt)
+        return self._split_response(response.text, 3)
+
+    def generate_custom_starter(self, idea: str) -> str:
+        """Generate a story starter based on a custom idea."""
+        prompt = self.instructions['custom_starter'].format(idea=idea)
+        response = self.model.generate_content(prompt)
+        return response.text
+
+    def generate_next_story_part(self, previous_part: str, selected_option: str) -> str:
+        """Generate the next part of the story based on the previous part and user choice."""
+        prompt = self.instructions['next_part'].format(
+            previous_part=previous_part,
+            selected_option=selected_option
+        )
+        response = self.model.generate_content(prompt)
+        return response.text
+
+    def generate_options(self, story_part: str) -> List[str]:
+        """Generate 3 options for continuing the story."""
+        prompt = self.instructions['options'].format(story_part=story_part)
+        response = self.model.generate_content(prompt)
+        return self._split_response(response.text, 3)
+
+    def generate_ending(self, story_parts: List[str]) -> str:
+        """Generate a final ending for the story."""
+        full_story = "\n".join(story_parts)
+        prompt = self.instructions['ending'].format(story_parts=full_story)
+        response = self.model.generate_content(prompt)
+        return response.text
+
+    def _split_response(self, text: str, count: int) -> List[str]:
+        """Helper method to split response into multiple parts."""
+        parts = text.split("\n")
+        return [part.strip() for part in parts[:count] if part.strip()]
