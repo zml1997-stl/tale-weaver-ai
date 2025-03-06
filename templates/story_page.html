@@ -1,0 +1,101 @@
+<!-- templates/story_page.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Story - Interactive Story Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Your Interactive Story</h1>
+        
+        <div id="storyContainer">
+            {% if final_ending %}
+                <!-- Display final ending if story is complete -->
+                <div class="story-text">
+                    <p>{{ final_ending }}</p>
+                </div>
+                <a href="{{ url_for('index') }}" class="button">Start New Story</a>
+            {% else %}
+                <!-- Display current story part and options -->
+                <div class="story-text">
+                    <p id="currentStoryPart">{{ current_story_part }}</p>
+                </div>
+
+                <div id="storyOptions">
+                    {% for option in options %}
+                        <div class="story-option" onclick="selectOption('{{ option }}')">
+                            <p>{{ option }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <button onclick="endStory()" class="button">End Story</button>
+            {% endif %}
+        </div>
+
+        <div class="controls">
+            <button onclick="readAloud()" class="button">Read Aloud</button>
+            <button onclick="pauseReading()" class="button">Pause</button>
+        </div>
+
+        <a href="{{ url_for('index') }}" class="button">Back to Home</a>
+    </div>
+
+    <div class="footer">
+        <p>Powered by Google Gemini</p>
+    </div>
+
+    <script>
+        let currentStoryPart = document.getElementById('currentStoryPart').innerText;
+        let synth = window.speechSynthesis;
+        let utterance = new SpeechSynthesisUtterance(currentStoryPart);
+        utterance.rate = 1.15;
+
+        function readAloud() {
+            synth.speak(utterance);
+        }
+
+        function pauseReading() {
+            synth.pause();
+        }
+
+        function selectOption(option) {
+            fetch("{{ url_for('generate_next') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    previous_part: currentStoryPart,
+                    selected_option: option
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('storyContainer').innerHTML = `
+                    <div class="story-text">
+                        <p>${data.next_part}</p>
+                    </div>
+                    <div id="storyOptions">
+                        ${data.options.map(option => `
+                            <div class="story-option" onclick="selectOption('${option}')">
+                                <p>${option}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button onclick="endStory()" class="button">End Story</button>
+                `;
+                currentStoryPart = data.next_part;
+                utterance.text = currentStoryPart;
+            });
+        }
+
+        function endStory() {
+            window.location.href = "{{ url_for('end_story') }}";
+        }
+    </script>
+</body>
+</html>
