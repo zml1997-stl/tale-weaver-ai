@@ -1,0 +1,42 @@
+<!-- templates/instructions.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How It Works - Interactive Story Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>How It Works</h1>
+        
+        <div class="instructions">
+            <h2>Creating a New Story</h2>
+            <ol>
+                <li>Click "Generate New Story" on the homepage.</li>
+                <li>Choose a genre or enter your own story idea.</li>
+                <li>Select one of the generated story starters.</li>
+                <li>As the story progresses, choose from the options provided to shape the narrative.</li>
+                <li>When you're ready to end the story, click "End Story" to generate a final ending.</li>
+            </ol>
+
+            <h2>Loading a Previous Story</h2>
+            <p>You can load and revisit any of your previously generated stories by clicking "Load Previous Story" on the homepage.</p>
+
+            <h2>Tips for Best Experience</h2>
+            <ul>
+                <li>Use headphones for the best text-to-speech experience.</li>
+                <li>Try different genres to explore various storytelling styles.</li>
+                <li>Experiment with custom ideas for unique storylines.</li>
+            </ul>
+        </div>
+
+        <a href="{{ url_for('index') }}" class="button">Back to Home</a>
+    </div>
+
+    <div class="footer">
+        <p>Powered by Google Gemini</p>
+    </div>
+</body>
+</html>
