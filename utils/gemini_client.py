@@ -6,7 +6,7 @@ class GeminiClient:
     def __init__(self, api_key: str):
         """Initialize the Gemini client with the API key."""
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.0-flash')
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
         self.genres = ['fantasy', 'sci-fi', 'mystery', 'romance']
         self.instructions = {
             'starter': "Generate a 2-3 sentence story starter in the {genre} genre. Make it engaging and open-ended.",
