@@ -1,95 +1,26 @@
-{% extends "base.html" %}
-
-{% block title %}AI Story Generator - Home{% endblock %}
-
-{% block content %}
-<section class="hero">
-    <h2>Create Interactive AI-Powered Stories</h2>
-    <p>Generate dynamic stories with Google's Gemini-2.0-Flash AI and guide the narrative with your choices!</p>
-</section>
-
-<section class="instructions">
-    <h3>How It Works</h3>
-    <ol>
-        <li>Choose a genre or enter your own story idea</li>
-        <li>Select a story starter or let the AI create one from your idea</li>
-        <li>Make choices to guide the story as it unfolds</li>
-        <li>End the story when you're ready and save your creation</li>
-    </ol>
-</section>
-
-<section class="story-creator">
-    <h3>Start Your Story</h3>
-    
-    <div class="tabs">
-        <button class="tab-btn active" onclick="showTab('genre-tab')">Choose a Genre</button>
-        <button class="tab-btn" onclick="showTab('custom-tab')">Custom Idea</button>
-    </div>
-    
-    <div id="genre-tab" class="tab-content active">
-        <form action="{{ url_for('genre_starters') }}" method="post">
-            <div class="form-group">
-                <label for="genre">Select a Genre:</label>
-                <select id="genre" name="genre" required>
-                    <option value="" disabled selected>Choose a genre</option>
-                    {% for genre in genres %}
-                        <option value="{{ genre }}">{{ genre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary">Get Story Starters</button>
-        </form>
-    </div>
-    
-    <div id="custom-tab" class="tab-content">
-        <form action="{{ url_for('custom_story') }}" method="post">
-            <div class="form-group">
-                <label for="story-idea">Enter Your Story Idea:</label>
-                <textarea id="story-idea" name="story_idea" rows="4" placeholder="Describe your story idea here..." required></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Create Story</button>
-        </form>
-    </div>
-</section>
-
-{% if recent_stories %}
-<section class="recent-stories">
-    <h3>Your Recent Stories</h3>
-    <div class="story-list">
-        {% for story in recent_stories %}
-            <div class="story-card">
-                <h4>{{ story.title }}</h4>
-                <p class="story-date">{{ story.timestamp|format_date }}</p>
-                <p class="story-preview">{{ story.content|truncate(100) }}</p>
-                <a href="{{ url_for('view_story', story_id=story.id) }}" class="btn btn-secondary">Continue Reading</a>
-            </div>
-        {% endfor %}
-    </div>
-    <a href="{{ url_for('saved_stories') }}" class="btn btn-text">View All Stories</a>
-</section>
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script>
-    function showTab(tabId) {
-        // Hide all tab contents
-        const tabContents = document.querySelectorAll('.tab-content');
-        tabContents.forEach(content => {
-            content.classList.remove('active');
-        });
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Story Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Interactive Story Generator</h1>
+        <p>Create your own AI-powered interactive stories!</p>
         
-        // Deactivate all tab buttons
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        tabButtons.forEach(button => {
-            button.classList.remove('active');
-        });
-        
-        // Show the selected tab content
-        document.getElementById(tabId).classList.add('active');
-        
-        // Activate the clicked tab button
-        event.currentTarget.classList.add('active');
-    }
-</script>
-{% endblock %}
+        <div class="actions">
+            <a href="{{ url_for('generate_story') }}" class="button">Generate New Story</a>
+            <a href="#" class="button">Load Previous Story</a>
+            <a href="{{ url_for('instructions') }}" class="button">How It Works</a>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Powered by Google Gemini</p>
+    </div>
+</body>
+</html>
